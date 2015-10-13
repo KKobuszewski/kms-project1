@@ -1,15 +1,22 @@
  #------------------------------------------------------------------------------
 
-CC=gcc
-CXX=g++
-CC_FLAGS= -Wall
-CXX_FLAGS= -Wall
+# c compiler
+CC 	  = gcc
+CC_FLAGS  = -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
+CC_INC    = -I.
+CC_DEFS   = 
+CC_LIBS   = -lgomp -lpthread -lm
 
+# c++ compiler
+CXX	  = g++
+CXX_FLAGS = -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
+CXX_INC   = -I.
+CXX_DEFS  = 
+CXX_LIBS  = -lgomp -lpthread -lm
 
-SRC= main.cpp
-PROG= simulation.exe
-INC= -I. 
-LIB= 
+# linker
+LD        = g++
+LD_FLAGS  = 
 
 #------------------------------------------------------------------------------
 
