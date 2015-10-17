@@ -20,7 +20,8 @@ LD_FLAGS  =
 
 #------------------------------------------------------------------------------
 
-
+SRC       = main.cpp
+PROG      = simulation.exe
 
 all: $(PROG)
 
@@ -28,7 +29,7 @@ all: $(PROG)
 
 $(PROG): $(SRC)
 
-	$(CXX) $(INC) $(SRC) -o$(PROG) $(LIB)
+	$(CXX) -o$(PROG) $(SRC) $(CXX_FLAGS) $(CXX_INC) $(CXX_LIBS) $(CXX_DEFS)
 
 clean:
 

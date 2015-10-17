@@ -6,12 +6,12 @@ import sys
 print(sys.version_info)
 
 module = Extension('MolecDyn',
-                    sources = ['python_interface.c'],
+                    sources = ['python_interface.c','libmolecdyn.c'],
                     include_dirs=np_misc_utils.get_numpy_include_dirs(),
                     define_macros=[('NPY_NO_DEPRECATED_API','NPY_1_7_API_VERSION')],
                     undef_macros=[],
                     library_dirs=[],
-                    libraries=[]
+                    libraries=['m']
                     )
 
 module.extra_compile_args.extend(['--std=c99'])

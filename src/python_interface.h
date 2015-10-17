@@ -8,12 +8,19 @@
 
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
+/*
+ * MACRO FUNCTIONS
+ */
+#define CheckPyErr(cmd,message)
+
+
 
 /*
  * NOARGS Functions
  */
 
 static PyObject* set_particles(PyObject* self);
+static PyObject* end_simulation(PyObject* self);
 
 
 /*
