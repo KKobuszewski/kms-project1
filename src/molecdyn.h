@@ -19,5 +19,10 @@ void init_csimulation(   const double a,
 
 void get_data(double** x_arr_ptr, double** y_arr_ptr, double** z_arr_ptr, double** vx_arr_ptr, double** vy_arr_ptr, double** vz_arr_ptr);
 double** return_positions();
+double** return_velocities();
+double** return_forces();
+
+
+void free_mem();
 
 #endif

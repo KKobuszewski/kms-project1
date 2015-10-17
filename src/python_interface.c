@@ -67,9 +67,9 @@ PyMODINIT_FUNC PyInit_MolecDyn(void)
  * *************************************************************************************************************************** */
 
 // Declare global params to parse    
-double a,T0,m,f,epsilon;
+double a,T0,m,epsilon,f,L,dt;
 int nx,ny,nz;
-// basis vectors  
+// basis vectors  |  NOTE: Assuming they are normalized!
 double base_vec1[] = {       1.,         0.,          0.};
 double base_vec2[] = {      0.5, SQRT_3/2.,          0.};
 double base_vec3[] = {      0.5, SQRT_3/6., SQRT_2_3};
@@ -77,18 +77,18 @@ double base_vec3[] = {      0.5, SQRT_3/6., SQRT_2_3};
 double *x_arr, *y_arr, *z_arr;
 double *vx_arr, *vy_arr, *vz_arr;
 
-void* parsed_args[] = {&a, &nx, &ny, &nz, &T0, &m, &f, &epsilon};
+void* parsed_args[] = {&a, &nx, &ny, &nz, &T0, &m, &f, &epsilon, &L};
 
-// TODO: Add base vectors to kwlist as not necessary argument |OOO
-const uint8_t kwlist_lenght = 8; // DO REMEMBER TO UPDATE WHEN CHANGING!
-static char *kwlist[] = {"a", /* lattice constant, value: 0.38 */
-                         "nx", /* number of atoms per dimension, value: 5 */
+const uint8_t kwlist_lenght = 9; // DO REMEMBER TO UPDATE WHEN CHANGING!
+static char *kwlist[] = {"nx", /* number of atoms per dimension, value: 5 */
                          "ny", /* number of atoms per dimension, value: 5 */
                          "nz", /* number of atoms per dimension, value: 5 */
+                         "a", /* lattice constant, value: 0.38 */
                          "T0",/* initial temperature, value: 100. */
                          "m", /* mass of a partile, 39.948 */
+                         "epsilon", /* minimal energy of Lennard-Jones potential */
                          "f", /* elastic constant, value: 10000.0 */
-                         "epsilon", /* unnecessary */
+                         "L", /* bonduary of elastic force */
                          "base_vec_x",
                          "base_vec_y",
                          "base_vec_z",
@@ -111,12 +111,20 @@ static PyObject* parse_args(PyObject* self, PyObject *args, PyObject *kwargs)
     // 2. Raising Python errors! PyErr_SetString(PyExc_ValueError,"string"); return NULL;
     // 3. Think which arguments are optional and which are required
     //    The arguments are parted by | character!
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "diiidddd|OOO", kwlist, 
-                                     &a, &nx, &ny, &nz, &T0, &m, &f, &epsilon,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iiidddddd|OOO", kwlist, 
+                                     &nx, &ny, &nz, &a, &T0, &m, &epsilon, &f, &L,
                                      &buf1,&buf2,&buf3
                                     ))
         return NULL;
     // Parsing args format codes: https://docs.python.org/2.0/ext/parseTuple.html
+    
+    // TODO: Parse buffers to base vecs!
+    
+    printf("lattice will be constucted on base vectors: \n");
+    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec1[0],base_vec1[1],base_vec1[2]);
+    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec2[0],base_vec2[1],base_vec2[2]);
+    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec3[0],base_vec3[1],base_vec3[2]);
+    printf("\n");
     
     // ========= Init simulation ============== /
     //init_simulation(a, m, T0, f, epsilon, nx, ny, nz, base_vec1, base_vec2, base_vec3);
@@ -176,14 +184,20 @@ static PyObject* set_particles(PyObject* self)
     vz_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
     
     double** positions = return_positions();
+    double** velocities = return_velocities();
     
     for (int ii = 0; ii < nx*ny*nz; ii++)
     {
-        x_arr[ii] = a*positions[0][ii];
-        y_arr[ii] = a*positions[1][ii];
-        z_arr[ii] = a*positions[2][ii];
+        x_arr[ii] = positions[0][ii];
+        y_arr[ii] = positions[1][ii];
+        z_arr[ii] = positions[2][ii];
     }
-    //get_data(&x_arr, &y_arr, &z_arr, &vx_arr, &vy_arr, &vz_arr);
+    for (int ii = 0; ii < nx*ny*nz; ii++)
+    {
+        vx_arr[ii] = velocities[0][ii];
+        vy_arr[ii] = velocities[1][ii];
+        vz_arr[ii] = velocities[2][ii];
+    }
     
     // ========= Construct numpy arrays to return ================ /
     // coordinates
@@ -206,11 +220,18 @@ static PyObject* set_particles(PyObject* self)
     PyArrayObject* py_vz_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, vz_arr);
     PyArray_ENABLEFLAGS(py_z_arr, NPY_ARRAY_OWNDATA);
     
+    // clear memory
+    // NOTE: Memory for PyArrayObjects and their data will be freed by Python
+    free(positions);
+    free(velocities);
     
     // TODO: Return dict with results' descriptions <- easier to 
-    return Py_BuildValue( "OOO", py_x_arr,
-                                 py_y_arr,
-                                 py_z_arr  );
+    return Py_BuildValue( "OOOOOO", py_x_arr,
+                                    py_y_arr,
+                                    py_z_arr,
+                                    py_vx_arr,
+                                    py_vy_arr,
+                                    py_vz_arr );
 }
 
 /*
@@ -218,5 +239,6 @@ static PyObject* set_particles(PyObject* self)
  */
 static PyObject* end_simulation(PyObject* self)
 {
+    free_mem();
     Py_RETURN_NONE;
 }

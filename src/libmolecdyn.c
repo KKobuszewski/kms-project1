@@ -15,6 +15,7 @@ typedef struct Global_t
     double f;
     double epsilon;
     double lm;
+    double kb;
     uint32_t nx;
     uint32_t ny;
     uint32_t nz;
@@ -97,10 +98,10 @@ inline void set_lattice(double* base_vec1,
 
 // ============= Draw velocities methods =================================================== /
 
-inline void drawVelVecCoord(double* coord_arr)
+inline void drawVelVecCoordUniform(double* coord_arr)
 {
-    uint32_t register const N = global.nx*global.ny*global.nz;
-    double register lm = global.lm;
+    register const uint32_t N = global.nx*global.ny*global.nz;
+    register const double lm = global.lm;
     
     for (uint32_t ii = 0; ii < N; ii++)
     {
@@ -109,16 +110,48 @@ inline void drawVelVecCoord(double* coord_arr)
     }
 }
 
+// TODO: Better random number generator
+inline void drawVelVecCoordBoltzmann(double* coord_arr)
+{
+    register const uint32_t N = global.nx*global.ny*global.nz;
+    register const double lm = global.lm;
+    
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        double X = ((double)rand() + 1.)/((double)RAND_MAX + 1.); // random number in (0,1]
+        double sign = (1. - 2.*(rand()%2)); // random sign
+        coord_arr[ii] = sign * sqrt(m*kb*T0 * ((-1.)*log(X))); // \pm \sqrt{2 m E_k}
+    }
+}
+
+typedef enum {UNIFORM, BOLTZMANN} distribution_t;
+
+// draw velocities from chosen distribution
+inline void drawVelVecCoord(double* coord_arr, distribution_t distribution)
+{
+    if      (distribution == BOLTZMANN) drawVelVecCoordBoltzmann(coord_arr);
+    else if (distribution == UNIFORM  ) drawVelVecCoordUniform(coord_arr);
+}
+
+inline double mean_momentum()
+{
+    for (uint32_t ii=0; ii<0; ii++)
+    {
+        
+    }
+}
+
 // TODO: Add different distributions. MAXWELL-BOLTZMANN!
 inline void set_velocities()
 {
-    drawVelVecCoord(global.vx_arr);
-    drawVelVecCoord(global.vy_arr);
-    drawVelVecCoord(global.vz_arr);
+    drawVelVecCoord(global.vx_arr, BOLTZMANN);
+    drawVelVecCoord(global.vy_arr, BOLTZMANN);
+    drawVelVecCoord(global.vz_arr, BOLTZMANN);
 }
 
 // ============= Count forces ============================================================== /
 
+// http://chemwiki.ucdavis.edu/Physical_Chemistry/Physical_Properties_of_Matter/Intermolecular_Forces/Lennard-Jones_Potential
 
 
 // ============= Count statistics ========================================================= /
@@ -151,9 +184,8 @@ void init_csimulation(   const double a,
     global.ny = nz;
     global.nz = nz;
     global.N = nx*ny*nz;
-    
-    const double kb = 0.00831; // rescale temperature
-    global.lm = sqrt(3.*T0*kb*1); // sqrt(3.*T0*kB*m) ale przyjmujemy do celow symulacji m = 1 <- przeskalowanie przy zwracaniu wyników
+    global.kb = 0.00831;
+    global.lm = sqrt(3.*T0*0.00831*m); // sqrt(3.*T0*kB*m) ale przyjmujemy do celow symulacji m = 1 <- przeskalowanie przy zwracaniu wyników
     
     // TODO: Check if it wouldn't be quicker to make contigouous 3-array.
     // Alloc mem for positions' vector
@@ -171,30 +203,16 @@ void init_csimulation(   const double a,
     global.fy_arr = (double*)malloc( sizeof(double) * nx*ny*nz );
     global.fz_arr = (double*)malloc( sizeof(double) * nx*ny*nz );
     
+    // NOTE: Assuming vectors are normalized!
+    for (int ii=0; ii < 3; ii++)
+    {
+        base_vec1[ii] *= a;
+	base_vec2[ii] *= a;
+	base_vec3[ii] *= a;
+    }
     set_lattice(base_vec1, base_vec2, base_vec3);
     
     set_velocities();
-}
-
-// rescale & return array
-/*
- * Pointers on pointer to 1D array
- */
-void get_data(double** x_arr_ptr, double** y_arr_ptr, double** z_arr_ptr, double** vx_arr_ptr, double** vy_arr_ptr, double** vz_arr_ptr)
-{
-    // copy arrays here with memcpy - copy now
-    
-    // positions
-    memcpy( *x_arr_ptr, global.x_arr, global.N );
-    memcpy( *y_arr_ptr, global.y_arr, global.N );
-    memcpy( *z_arr_ptr, global.z_arr, global.N );
-    
-    // velocities
-    memcpy( *vx_arr_ptr, global.vx_arr, global.N );
-    memcpy( *vy_arr_ptr, global.vy_arr, global.N );
-    memcpy( *vz_arr_ptr, global.vz_arr, global.N );
-    
-    // rescale with OpenMP
 }
 
 // copy pointers to data
@@ -208,4 +226,42 @@ double** return_positions()
     
     return positions;
 }
+
+double** return_velocities()
+{
+    double** velocities = (double**) malloc(3 * sizeof(double*));
     
+    velocities[0] = global.vx_arr;
+    velocities[1] = global.vy_arr;
+    velocities[2] = global.vz_arr;
+    
+    return velocities;
+}
+
+double** return_forces()
+{
+    double** forces = (double**) malloc(3 * sizeof(double*));
+    
+    forces[0] = global.fx_arr;
+    forces[1] = global.fy_arr;
+    forces[2] = global.fz_arr;
+    
+    return forces;
+}
+
+void free_mem()
+{
+    
+    free(global.x_arr);
+    free(global.y_arr);
+    free(global.z_arr);
+    
+    free(global.vx_arr);
+    free(global.vy_arr);
+    free(global.vz_arr);
+    
+    free(global.fx_arr);
+    free(global.fy_arr);
+    free(global.fz_arr);
+    
+}

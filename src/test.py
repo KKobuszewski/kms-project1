@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from mayavi import mlab
+#from mayavi import mlab
 
 import MolecDyn as md # home-made module for molecular dynamics
 
@@ -17,13 +17,14 @@ md.init_simulation(a=0.38,
                    T0=100.,
                    m=39.948,
                    f=10000.0,
+                   L=1.2,
                    epsilon=1.)
 
-x,y,z = md.set_particles()
+x,y,z,vx,vy,vz = md.set_particles()
 
 # show in mayavi
-mlab.points3d(x, y, z)
-mlab.show()
+#mlab.points3d(x, y, z)
+#mlab.show()
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
