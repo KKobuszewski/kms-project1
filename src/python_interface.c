@@ -23,6 +23,7 @@ static PyMethodDef module_methods[] = {
      */
     {"init_simulation"  , (PyCFunction) parse_args    , METH_VARARGS|METH_KEYWORDS, "doc: test parsing arguments"},
     {"set_particles"    , (PyCFunction) set_particles , METH_NOARGS               , "doc: set_particles"},
+    {"system_stats"     , (PyCFunction) stats         , METH_NOARGS               , "doc: statistics of system in current time"},
     {"end"              , (PyCFunction) end_simulation, METH_NOARGS               , "doc: end simulation"},
     { NULL, NULL, 0, NULL }   /* sentinel */
 };
@@ -67,7 +68,8 @@ PyMODINIT_FUNC PyInit_MolecDyn(void)
  * *************************************************************************************************************************** */
 
 // Declare global params to parse    
-double a,T0,m,epsilon,f,L,dt;
+double a;
+double T0,m,epsilon,f,L,dt;
 int nx,ny,nz;
 // basis vectors  |  NOTE: Assuming they are normalized!
 double base_vec1[] = {       1.,         0.,          0.};
@@ -75,9 +77,9 @@ double base_vec2[] = {      0.5, SQRT_3/2.,          0.};
 double base_vec3[] = {      0.5, SQRT_3/6., SQRT_2_3};
 
 double *x_arr, *y_arr, *z_arr;
-double *vx_arr, *vy_arr, *vz_arr;
+double *px_arr, *py_arr, *pz_arr;
 
-void* parsed_args[] = {&a, &nx, &ny, &nz, &T0, &m, &f, &epsilon, &L};
+void* parsed_args[] = {&nx, &ny, &nz, &a, &T0, &m, &epsilon, &f, &L};
 
 const uint8_t kwlist_lenght = 9; // DO REMEMBER TO UPDATE WHEN CHANGING!
 static char *kwlist[] = {"nx", /* number of atoms per dimension, value: 5 */
@@ -98,7 +100,7 @@ static inline void print_args(void)
 {
     for (uint8_t ii = 0; ii < kwlist_lenght; ii++)
     {
-        printf("%s: %lf\n", kwlist[ii],*((double*) parsed_args[ii])); // C is beautiful!
+        printf("%s: %3.3lf\n", kwlist[ii],*((double*) parsed_args[ii])); // C is beautiful!
     }
 }
                          
@@ -120,16 +122,16 @@ static PyObject* parse_args(PyObject* self, PyObject *args, PyObject *kwargs)
     
     // TODO: Parse buffers to base vecs!
     
-    printf("lattice will be constucted on base vectors: \n");
-    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec1[0],base_vec1[1],base_vec1[2]);
-    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec2[0],base_vec2[1],base_vec2[2]);
-    printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec3[0],base_vec3[1],base_vec3[2]);
+//     printf("lattice will be constucted on base vectors: \n");
+//     printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec1[0],base_vec1[1],base_vec1[2]);
+//     printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec2[0],base_vec2[1],base_vec2[2]);
+//     printf("(%1.3lf,%1.3lf,%1.3lf)",base_vec3[0],base_vec3[1],base_vec3[2]);
     printf("\n");
     
     // ========= Init simulation ============== /
     //init_simulation(a, m, T0, f, epsilon, nx, ny, nz, base_vec1, base_vec2, base_vec3);
     
-    // print parsed args
+    // print parsed args    
     //print_args();
     
     
@@ -167,24 +169,28 @@ static PyObject* set_particles(PyObject* self)
     // print parsed args
     print_args();
     
+//     printf("constructing lattice %ux%ux%u\n",nx,ny,nz);
+//     
+//     printf("a:  %lf\nnx: %d\nny: %d\nnz: %d\n",a,nx,ny,nz);
+    
     
     // ========= Init simulation ============== /
-    init_csimulation(a, m, T0, f, epsilon, nx, ny, nz, base_vec1, base_vec2, base_vec3);
+    init_csimulation(a, m, T0, epsilon, f, L, nx, ny, nz, base_vec1, base_vec2, base_vec3);
     
     // ========= Copy data from simulation ========== /
-    //get_data(&x_arr, &y_arr, &z_arr, &vx_arr, &vy_arr, &vz_arr);
+    //get_data(&x_arr, &y_arr, &z_arr, &px_arr, &py_arr, &pz_arr);
     
     // Alloc memory for buffers
     x_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
     y_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
     z_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
     
-    vx_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
-    vy_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
-    vz_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
+    px_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
+    py_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
+    pz_arr = (double*) malloc( sizeof(double) * nx*ny*nz );
     
     double** positions = return_positions();
-    double** velocities = return_velocities();
+    double** momenta = return_momenta();
     
     for (int ii = 0; ii < nx*ny*nz; ii++)
     {
@@ -194,9 +200,9 @@ static PyObject* set_particles(PyObject* self)
     }
     for (int ii = 0; ii < nx*ny*nz; ii++)
     {
-        vx_arr[ii] = velocities[0][ii];
-        vy_arr[ii] = velocities[1][ii];
-        vz_arr[ii] = velocities[2][ii];
+        px_arr[ii] = momenta[0][ii];
+        py_arr[ii] = momenta[1][ii];
+        pz_arr[ii] = momenta[2][ii];
     }
     
     // ========= Construct numpy arrays to return ================ /
@@ -210,29 +216,60 @@ static PyObject* set_particles(PyObject* self)
     PyArrayObject* py_z_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, z_arr);
     PyArray_ENABLEFLAGS(py_z_arr, NPY_ARRAY_OWNDATA);
     
-    // velocities
-    PyArrayObject* py_vx_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, vx_arr);
+    // momenta
+    PyArrayObject* py_px_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, px_arr);
     PyArray_ENABLEFLAGS(py_x_arr, NPY_ARRAY_OWNDATA);
         
-    PyArrayObject* py_vy_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, vy_arr);
+    PyArrayObject* py_py_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, py_arr);
     PyArray_ENABLEFLAGS(py_y_arr, NPY_ARRAY_OWNDATA);
     
-    PyArrayObject* py_vz_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, vz_arr);
+    PyArrayObject* py_pz_arr = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, pz_arr);
     PyArray_ENABLEFLAGS(py_z_arr, NPY_ARRAY_OWNDATA);
     
     // clear memory
     // NOTE: Memory for PyArrayObjects and their data will be freed by Python
     free(positions);
-    free(velocities);
+    free(momenta);
     
     // TODO: Return dict with results' descriptions <- easier to 
     return Py_BuildValue( "OOOOOO", py_x_arr,
                                     py_y_arr,
                                     py_z_arr,
-                                    py_vx_arr,
-                                    py_vy_arr,
-                                    py_vz_arr );
+                                    py_px_arr,
+                                    py_py_arr,
+                                    py_pz_arr );
 }
+
+
+/* *************************************************************************************************************************** *
+ *                                                                                                                             *
+ *                                              SIMULATION RUNTIME METHODS                                                     *
+ *                                                                                                                             *
+ * *************************************************************************************************************************** */
+/*
+ * returns numpy array of system's macroparameters in order T_ENERGY,LJ_POTENTIAL, SP_POTENTIAL, PRESSURE, ISNT_TEMP
+ */
+static PyObject* stats(PyObject* self)
+{
+    int ndims = 1;
+    npy_intp dims[ndims];
+    dims[0] = (INST_TEMP+1);
+    
+    double* stats = get_statistics();
+    
+    printf("Python binding\n");
+    printf("kinetic: %lf\n",stats[0]);
+    printf("Lj     : %lf\n",stats[1]);
+    printf("spring : %lf\n",stats[2]);
+    printf("press. : %lf\n",stats[3]);
+    printf("temp.  : %lf\n",stats[4]);
+    
+    PyArrayObject* py_stats = (PyArrayObject *) PyArray_SimpleNewFromData(ndims, dims, NPY_DOUBLE, stats);
+    PyArray_ENABLEFLAGS(py_stats, NPY_ARRAY_OWNDATA);
+    
+    return Py_BuildValue( "O", py_stats );
+}
+
 
 /*
  * To make sure that module and returned np array is initialized

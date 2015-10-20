@@ -21,6 +21,7 @@
 
 static PyObject* set_particles(PyObject* self);
 static PyObject* end_simulation(PyObject* self);
+static PyObject* stats(PyObject* self);
 
 
 /*

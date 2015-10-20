@@ -21,7 +21,7 @@ LD_FLAGS  =
 #------------------------------------------------------------------------------
 
 SRC       = main.cpp
-PROG      = simulation.exe
+PROG      = libmolecdyn.so
 
 all: $(PROG)
 
@@ -29,7 +29,8 @@ all: $(PROG)
 
 $(PROG): $(SRC)
 
-	$(CXX) -o$(PROG) $(SRC) $(CXX_FLAGS) $(CXX_INC) $(CXX_LIBS) $(CXX_DEFS)
+	$(CXX) -c $(SRC) $(CXX_FLAGS) $(CXX_INC) $(CXX_LIBS) $(CXX_DEFS)
+	$(CXX) -
 
 clean:
 
