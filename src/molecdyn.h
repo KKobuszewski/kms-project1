@@ -11,6 +11,7 @@ void init_csimulation(  const double a,
                         const double epsilon,
                         const double f,
                         const double L,
+                        const double dt,
                         const uint32_t nx,
                         const uint32_t ny,
                         const uint32_t nz,
@@ -19,11 +20,13 @@ void init_csimulation(  const double a,
                         double* base_vec3
                     );
 
-void get_data(double** x_arr_ptr, double** y_arr_ptr, double** z_arr_ptr, double** vx_arr_ptr, double** vy_arr_ptr, double** vz_arr_ptr);
+void set_dt(const double dt);
+
+void evolve_system(uint32_t steps);
+
 double** return_positions();
 double** return_momenta();
 double** return_forces();
-
 
 typedef enum {T_ENERGY,LJ_POTENTIAL, SP_POTENTIAL, PRESSURE, INST_TEMP} stats_type_t; // leave temperature the last!
 double* get_statistics();

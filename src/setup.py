@@ -15,13 +15,12 @@ for key, value in cfg_vars.items():
 module = Extension('MolecDyn',
                     sources = ['python_interface.c','libmolecdyn.c'],
                     include_dirs=np_misc_utils.get_numpy_include_dirs(),
-                    define_macros=[('NPY_NO_DEPRECATED_API','NPY_1_7_API_VERSION')],
+                    define_macros=[('NPY_NO_DEPRECATED_API','NPY_1_7_API_VERSION')],#,('VERBOSE','')],
                     undef_macros=[],
                     library_dirs=[],
-                    libraries=['m']
-                    )
+                    libraries=['m','gomp'])
 
-module.extra_compile_args.extend(['--std=c99'])
+module.extra_compile_args.extend(['--std=c99','-fopenmp'])
 if sys.version_info[0] == 3:
     module.define_macros.extend(['PYTHON3'])
 #else:

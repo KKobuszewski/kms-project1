@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include <math.h>
+#include <omp.h>
 
 #include "molecdyn.h"
 
@@ -19,6 +20,7 @@ typedef struct Global_t
     double L;
     double lm;
     double kb;
+    double dt;
     uint32_t nx;
     uint32_t ny;
     uint32_t nz;
@@ -40,6 +42,7 @@ Global_t global;
 
 double* wrk_arr1;
 double* wrk_arr2;
+double* wrk_arr3;
 
 // TODO: Move static inline functions to header in case to make them inline in other compilation units.
 //       OR MOVE GLOBAL STRUCTRE TO MAKE IT VISIBLE IN OTHER COMPILATION UNITS
@@ -100,7 +103,7 @@ inline void set_lattice(double* base_vec1,
     vecCoordxbaseCoord(global.z_arr, base_vec1[Z], base_vec2[Z], base_vec3[Z]);
 }
 
-// ============= Draw momentum methods =================================================== /
+// ============= Momentum methods =================================================== /
 
 typedef enum {UNIFORM, BOLTZMANN} distribution_t;
 
@@ -175,9 +178,10 @@ inline void set_mean_momentum_zero()
         global.py_arr[ii] -= mean_momentum[Y];
         global.pz_arr[ii] -= mean_momentum[Z];
     }
-    
+#ifdef VEROBSE
     printf("# MEAN MOMENTUM AFTER DRAWING\n");
-    printf("(%5.5lf, %5.5lf, %5.5lf)\n\n",mean_momentum[X],mean_momentum[Y],mean_momentum[Z]);
+    printf("(%5.5lf, %5.5lf, %5.5lf)\n",mean_momentum[X],mean_momentum[Y],mean_momentum[Z]);
+#endif
 }
 
 // TODO: Add different distributions. MAXWELL-BOLTZMANN!
@@ -193,7 +197,163 @@ inline void set_momenta()
 // ============= Count forces ============================================================== /
 
 // http://chemwiki.ucdavis.edu/Physical_Chemistry/Physical_Properties_of_Matter/Intermolecular_Forces/Lennard-Jones_Potential
+inline void count_forces()
+{
+    const uint32_t N = global.nx*global.ny*global.nz;
+    
+    // clear momory - TODO: look if this is quicker than for
+    memset(global.fx_arr,0,N*sizeof(double));
+    memset(global.fy_arr,0,N*sizeof(double));
+    memset(global.fz_arr,0,N*sizeof(double));
+    
+    // interatomic forces
+    const double a_sq = global.a*global.a;
+    const double epsilon = global.epsilon;double rij_sq;
+    double xij;
+    double yij;
+    double zij;
+    double F;
+    double fx_ij = 0.;
+    double fy_ij = 0.;
+    double fz_ij = 0.;
+    
+    uint32_t ii,jj;
+    #pragma omp parallel for num_threads(7) private(ii,jj)
+    // TODO: Check if this is symmetric
+    for (ii = 0; ii < N; ii++)
+    {
+        for (jj = ii+1; jj < N; jj++)
+        {
+//              if (jj == ii) 
+//              {
+//                  if (ii < N-1) jj += 1;
+//                  else if (jj == N-1) break;
+//              }
+            //COMMENT: when fancy indexing N(N-1)/2, normal N^2
+            
+            xij = global.x_arr[ii] - global.x_arr[jj];
+            yij = global.y_arr[ii] - global.y_arr[jj];
+            zij = global.z_arr[ii] - global.z_arr[jj];
+            
+            rij_sq = xij*xij + yij*yij + zij*zij;
+            if (rij_sq < 1e-15) {printf("Lennard-Jones Force error! rij is %lf\n",rij_sq); /*exit(EXIT_FAILURE);*/}
+            F = 12*epsilon*( pow(a_sq/rij_sq,6) - 2.*pow(a_sq/rij_sq,3) )/rij_sq;
+            
+            
+            
+            // TODO: How to optimize it?
+            global.fx_arr[jj] -= F * xij;
+            global.fy_arr[jj] -= F * yij;
+            global.fz_arr[jj] -= F * zij;
+            
+            global.fx_arr[ii] += F * xij;
+            global.fy_arr[ii] += F * yij;
+            global.fz_arr[ii] += F * zij;
+            
+//             fx_ij += F * xij;
+//             fy_ij += F * yij;
+//             fz_ij += F * zij;
+        }
+//         global.fx_arr[ii] += fx_ij;
+//         global.fy_arr[ii] += fy_ij;
+//         global.fz_arr[ii] += fz_ij;
+        
+//         fx_ij = 0.;
+//         fy_ij = 0.;
+//         fz_ij = 0.;
+    }
+    
+    // springiness forces
+    const double f = global.f;
+    const double L = global.L;
+    double ri;
+    double xi;
+    double yi;
+    double zi;
+    double S;
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        xi = global.x_arr[ii];
+        yi = global.y_arr[ii];
+        zi = global.z_arr[ii];
+            
+        ri = sqrt(xi*xi + yi*yi + zi*zi);
+        if (ri >= L)
+        {
+            S = f*(L-ri)/ri;
+            global.fx_arr[ii] += S * xi;
+            global.fy_arr[ii] += S * yi;
+            global.fz_arr[ii] += S * zi;
+#ifdef VERBOSE
+            printf("r%d:\t%lf\t%lf\t\tforce:(%lf,%lf,%lf)\n",ii,ri,S,global.fx_arr[ii],global.fy_arr[ii],global.fz_arr[ii]);
+#endif
+        }
+    }
+}
 
+// ============= Algorithm ============================================================== /
+
+/*
+ * NOTE: Assumes forces have been counted before!
+ */
+inline void leap_frog()
+{
+    const uint32_t N = global.nx*global.ny*global.nz;
+    double const half_dt = 0.5*global.dt;
+    double const half_m = 0.5*global.m;
+    
+    
+    // count forces for old positions
+    //count_forces();
+    
+    // count momenta
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.px_arr[ii] += global.fx_arr[ii]*half_dt;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.py_arr[ii] += global.fy_arr[ii]*half_dt;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.pz_arr[ii] += global.fz_arr[ii]*half_dt;
+    }
+    
+    // update positions
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.x_arr[ii] += global.px_arr[ii]*half_dt/half_m;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.y_arr[ii] += global.py_arr[ii]*half_dt/half_m;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.z_arr[ii] += global.pz_arr[ii]*half_dt/half_m;
+    }
+    
+    
+    // update forces
+    count_forces();
+    
+    // update momenta
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.px_arr[ii] += global.fx_arr[ii]*half_dt;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.py_arr[ii] += global.fy_arr[ii]*half_dt;
+    }
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        global.pz_arr[ii] += global.fz_arr[ii]*half_dt;
+    }
+    
+    if (!global.x_arr[0]) printf("\n\n# %lf in LEAP FROG !!!!!!!!!!!\n\n",global.x_arr[0]);
+}
 
 // ============= Count statistics ========================================================= /
 
@@ -220,10 +380,10 @@ inline double springiness_potential()
     // TODO: Place this with force counting and make sure potential will be counted after
     // TODO: Check if using wrk_arr is quicker
     // count distances from (0,0,0)
-    for (uint32_t ii = 0; ii < N; ii++)
-    {
-        wrk_arr1[ii] = global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii];
-    }
+//     for (uint32_t ii = 0; ii < N; ii++)
+//     {
+//         wrk_arr1[ii] = global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii];
+//     }
     /*
      * NOTE: |r_i| in wrk_arr1
      */
@@ -231,39 +391,23 @@ inline double springiness_potential()
     
     double V_sp = 0.;
     const double L = global.L;
+    double ri;
     
     // omp redution with condition?
     for (uint32_t ii = 0; ii < N; ii++)
     {
-        if (wrk_arr1[ii] >= L)
+        ri = sqrt(global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii]);
+        if (ri >= L)
         {
-            V_sp += (wrk_arr1[ii] - L)*(wrk_arr1[ii] - L);
+// #ifdef VERBOSE
+            printf("r%d:\t%lf\n",ii,ri);
+// #endif
+            V_sp += (ri - L)*(ri - L);
         }
     }
-    
+    printf("# ###### Springiness potential %lf\n",0.5*global.f*V_sp);
     return 0.5*global.f*V_sp;
 }
-
-
-inline double pressure()
-{
-    const uint32_t N = global.nx*global.ny*global.nz;
-    const double L = global.L;
-    const double four_pi_L_sq = 4.*M_PI*global.L*global.L;
-    double P =0.;
-    
-    
-    for (uint32_t ii = 0; ii < N; ii++)
-    {
-        if (wrk_arr1[ii] >= L)
-        {
-            P += (wrk_arr1[ii] - L);
-        }
-    }
-    
-    return P/four_pi_L_sq;
-}
-
 
 inline double LJ_potential()
 {
@@ -296,6 +440,40 @@ inline double LJ_potential()
     return epsilon*V_LJ;
 }
 
+inline double pressure()
+{
+    const uint32_t N = global.nx*global.ny*global.nz;
+    const double L = global.L;
+    const double four_pi_L_sq = 4.*M_PI*global.L*global.L;
+    double ri;
+    double P =0.;
+    
+    
+    for (uint32_t ii = 0; ii < N; ii++)
+    {
+        ri = global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii];
+        if (ri >= L)
+        {
+            P += (ri - L);
+        }
+    }
+    
+    return P/four_pi_L_sq;
+}
+
+inline double temperature()
+{
+    const uint32_t N = global.nx*global.ny*global.nz;
+    double T = 0.;
+    
+    for (uint32_t ii=0; ii < N; ii++)
+    {
+        T += global.px_arr[ii]*global.px_arr[ii] + global.py_arr[ii]*global.py_arr[ii] + global.pz_arr[ii]*global.pz_arr[ii];
+    }
+    
+    return T/( N*global.kb*global.m );
+}
+
 
 // ============= Functions to be called out of library ===================================== /
 
@@ -305,6 +483,7 @@ void init_csimulation(  const double a,
                         const double epsilon,
                         const double f,
                         const double L,
+                        const double dt,
                         const uint32_t nx,
                         const uint32_t ny,
                         const uint32_t nz,
@@ -316,6 +495,7 @@ void init_csimulation(  const double a,
     // Set parameters
     global.a = a;
     global.m = m;
+    global.dt = dt;
     global.T0 = T0;
     global.epsilon = epsilon;
     global.f = f;
@@ -347,12 +527,14 @@ void init_csimulation(  const double a,
     wrk_arr1 = (double*)malloc( sizeof(double) * nx*ny*nz );
     wrk_arr2 = (double*)malloc( sizeof(double) * nx*ny*nz );
     
+#ifdef VERBOSE
     printf("# CONSTRUCTING LATTICE %ux%ux%u\n",nx,ny,nz);
-    printf("lattice constant:  %lf",a);
+    printf("lattice constant:  %lf\n",a);
     printf("lattice will be constucted on base vectors: \n");
     printf("(%1.3lf,%1.3lf,%1.3lf)\n",base_vec1[0],base_vec1[1],base_vec1[2]);
     printf("(%1.3lf,%1.3lf,%1.3lf)\n",base_vec2[0],base_vec2[1],base_vec2[2]);
     printf("(%1.3lf,%1.3lf,%1.3lf)\n",base_vec3[0],base_vec3[1],base_vec3[2]);
+#endif
     
     // NOTE: Assuming vectors are normalized!
     for (int ii=0; ii < 3; ii++)
@@ -393,6 +575,8 @@ double** return_forces()
 {
     double** forces = (double**) malloc(3 * sizeof(double*));
     
+    count_forces();
+    
     forces[0] = global.fx_arr;
     forces[1] = global.fy_arr;
     forces[2] = global.fz_arr;
@@ -414,11 +598,35 @@ double* get_statistics()
     printf("spring : %lf\n",stats[2]);
     stats[3] = pressure();
     printf("press. : %lf\n",stats[3]);
-    stats[4] = global.T0;
+    stats[4] = temperature();
     printf("temp.  : %lf\n",stats[4]);
     
     return stats;
 }
+
+void set_dt(const double dt)
+{
+    global.dt = dt;
+#ifdef VERBOSE
+    printf("Changing dt: %lf !!!\n",global.dt);
+#endif
+}
+
+void evolve_system(uint32_t timesteps)
+{
+    
+    /* ******************************************* *
+     *          MAIN LOOP
+     */
+    
+    count_forces(); // function leap_frog() requries
+    
+    for (uint32_t ii=0; ii < timesteps; ii++)
+    {
+        leap_frog();
+    }
+}
+
 
 void free_mem()
 {

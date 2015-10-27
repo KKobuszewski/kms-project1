@@ -22,6 +22,9 @@
 static PyObject* set_particles(PyObject* self);
 static PyObject* end_simulation(PyObject* self);
 static PyObject* stats(PyObject* self);
+static PyObject* get_positions(PyObject* self);
+static PyObject* get_momenta(PyObject* self);
+static PyObject* get_forces(PyObject* self);
 
 
 /*
@@ -35,6 +38,7 @@ static PyObject* stats(PyObject* self);
  */
 
 static PyObject* parse_args(PyObject* self, PyObject *args, PyObject *kwargs);
+static PyObject* evolve(PyObject* self, PyObject *args, PyObject *kwargs);
 
 
 #endif
