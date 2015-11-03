@@ -5,11 +5,11 @@ from mayavi import mlab
 
 import MolecDyn as md # home-made module for molecular dynamics
 
-md.init_simulation(nx=5,
-                   ny=5,
-                   nz=5,
+md.init_simulation(nx=2,
+                   ny=2,
+                   nz=2,
                    a=0.38,
-                   T0=100.,
+                   T0=1000.,
                    m=39.948,
                    f=10000.0,
                    L=2.3,
@@ -35,13 +35,13 @@ plt = mlab.points3d(x,y,z)
 
 
 
-@mlab.animate(delay=15)
+@mlab.animate(delay=10)
 def anim():
     f = mlab.gcf()
     #for ii in xrange(50):
     while(True):
         # TODO: Paralelize
-        md.evolve(1000)
+        md.evolve(10)
         x,y,z = md.get_positions()
         print(x)
         plt.mlab_source.set(x=x, y=y, z=z)

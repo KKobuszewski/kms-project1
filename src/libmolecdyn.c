@@ -187,9 +187,12 @@ inline void set_mean_momentum_zero()
 // TODO: Add different distributions. MAXWELL-BOLTZMANN!
 inline void set_momenta()
 {
-    drawMomVecCoord(global.px_arr, BOLTZMANN);
-    drawMomVecCoord(global.py_arr, BOLTZMANN);
-    drawMomVecCoord(global.pz_arr, BOLTZMANN);
+//     drawMomVecCoord(global.px_arr, BOLTZMANN);
+//     drawMomVecCoord(global.py_arr, BOLTZMANN);
+//     drawMomVecCoord(global.pz_arr, BOLTZMANN);
+    drawMomVecCoord(global.px_arr, UNIFORM);
+    drawMomVecCoord(global.py_arr, UNIFORM);
+    drawMomVecCoord(global.pz_arr, UNIFORM);
         
     set_mean_momentum_zero();
 }
@@ -202,9 +205,15 @@ inline void count_forces()
     const uint32_t N = global.nx*global.ny*global.nz;
     
     // clear momory - TODO: look if this is quicker than for
-    memset(global.fx_arr,0,N*sizeof(double));
-    memset(global.fy_arr,0,N*sizeof(double));
-    memset(global.fz_arr,0,N*sizeof(double));
+//     memset(global.fx_arr,0,N*sizeof(double));
+//     memset(global.fy_arr,0,N*sizeof(double));
+//     memset(global.fz_arr,0,N*sizeof(double));
+    for( uint32_t ii=0; ii<N; ii++)
+    {
+        global.fx_arr[ii] = 0.;
+        global.fy_arr[ii] = 0.;
+        global.fz_arr[ii] = 0.;
+    }
     
     // interatomic forces
     const double a_sq = global.a*global.a;
@@ -213,12 +222,12 @@ inline void count_forces()
     double yij;
     double zij;
     double F;
-    double fx_ij = 0.;
-    double fy_ij = 0.;
-    double fz_ij = 0.;
+//     double fx_ij = 0.;
+//     double fy_ij = 0.;
+//     double fz_ij = 0.;
     
     uint32_t ii,jj;
-    #pragma omp parallel for num_threads(7) private(ii,jj)
+    //#pragma omp parallel for num_threads(7) private(ii,jj)
     // TODO: Check if this is symmetric
     for (ii = 0; ii < N; ii++)
     {
@@ -237,11 +246,10 @@ inline void count_forces()
             
             rij_sq = xij*xij + yij*yij + zij*zij;
             if (rij_sq < 1e-15) {printf("Lennard-Jones Force error! rij is %lf\n",rij_sq); /*exit(EXIT_FAILURE);*/}
-            F = 12*epsilon*( pow(a_sq/rij_sq,6) - 2.*pow(a_sq/rij_sq,3) )/rij_sq;
+            F = 12*epsilon*( pow(a_sq/rij_sq,6) - pow(a_sq/rij_sq,3) )/rij_sq;
             
             
             
-            // TODO: How to optimize it?
             global.fx_arr[jj] -= F * xij;
             global.fy_arr[jj] -= F * yij;
             global.fz_arr[jj] -= F * zij;
@@ -250,17 +258,7 @@ inline void count_forces()
             global.fy_arr[ii] += F * yij;
             global.fz_arr[ii] += F * zij;
             
-//             fx_ij += F * xij;
-//             fy_ij += F * yij;
-//             fz_ij += F * zij;
         }
-//         global.fx_arr[ii] += fx_ij;
-//         global.fy_arr[ii] += fy_ij;
-//         global.fz_arr[ii] += fz_ij;
-        
-//         fx_ij = 0.;
-//         fy_ij = 0.;
-//         fz_ij = 0.;
     }
     
     // springiness forces
@@ -294,7 +292,7 @@ inline void count_forces()
 // ============= Algorithm ============================================================== /
 
 /*
- * NOTE: Assumes forces have been counted before!
+ * NOTE: Assumes forces have been counted before! Important when initializing for the fist time
  */
 inline void leap_frog()
 {
@@ -367,9 +365,11 @@ inline double kinetic_energy()
     // Reduction with OpenMP
     for (uint32_t ii = 0; ii < N; ii++)
     {
+        // here counting \sum_{i=1}^{N} {p_i}^2
         T += global.px_arr[ii]*global.px_arr[ii] + global.py_arr[ii]*global.py_arr[ii] + global.pz_arr[ii]*global.pz_arr[ii];
     }
     
+    // here dividing by 2m
     return 0.5*T/global.m;
 }
 
@@ -451,7 +451,7 @@ inline double pressure()
     
     for (uint32_t ii = 0; ii < N; ii++)
     {
-        ri = global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii];
+        ri = sqrt(global.x_arr[ii]*global.x_arr[ii] + global.y_arr[ii]*global.y_arr[ii] + global.z_arr[ii]*global.z_arr[ii]);
         if (ri >= L)
         {
             P += (ri - L);
@@ -471,7 +471,7 @@ inline double temperature()
         T += global.px_arr[ii]*global.px_arr[ii] + global.py_arr[ii]*global.py_arr[ii] + global.pz_arr[ii]*global.pz_arr[ii];
     }
     
-    return T/( N*global.kb*global.m );
+    return T/( 3*N*global.kb*global.m );
 }
 
 

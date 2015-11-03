@@ -1,5 +1,7 @@
 from __future__ import print_function
 import numpy as np
+import math
+from math import pi
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 #from mayavi import mlab
@@ -16,6 +18,7 @@ epsilon=1.0
 f= 10000.0
 L= 2.3
 dt= 2e-03
+kb=8.31*1e-3
 
 print('# starting test of MolecDyn')
 
@@ -32,13 +35,18 @@ md.init_simulation(nx=5,
 
 x,y,z,px,py,pz = md.set_particles()
 
-plt.hist([px,py,pz],label=['px','py','pz'])
-plt.title("px,py,pz histogram")
-plt.xlabel("momentum")
+p = np.linspace(0.,20.,num=200)
+C = math.sqrt(kb*T0/m)
+
+plt.hist(np.sqrt(px**2+py**2+pz**2)/m,label='|p|',normed=True)
+#plt.plot(p/m,4*pi*(m/(2*pi*kb*T0))**(3/2)*(p/m)**2*np.exp(-(p/m)**2/(2*m*kb*T0)))
+plt.axvline(math.sqrt(2*kb*T0/m),color='red')
+plt.title("velocity histogram")
+plt.xlabel("velocity")
 plt.ylabel("frequency")
 
-#plt.show()
-plt.savefig('momentum_histogram.pdf')
+plt.show()
+plt.savefig('velocity_histogram.pdf')
 
 print('mean momentum via Python: ({},{},{})'.format(np.mean(px),np.mean(py),np.mean(pz)))
 
@@ -124,10 +132,10 @@ ax.set_xlim([-2.,2])
 ax.set_ylim([-2.,2])
 ax.set_zlim([-2.,2])
 
-ax.scatter(x, y, z, c='grey', marker='o')
-ax.scatter(x2, y2, z2, c='red', marker='o')
+#ax.scatter(x, y, z, c='grey', marker='o')
+#ax.scatter(x2, y2, z2, c='red', marker='o')
 
-plt.show()
-plt.savefig('evolution_step.pdf')
+#plt.show()
+#plt.savefig('evolution_step.pdf')
 
 md.end()

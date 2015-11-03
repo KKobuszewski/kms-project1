@@ -34,4 +34,9 @@ double* get_statistics();
 void free_mem();
 
 
+// ============ OpenGL wrapper =======================================
+
+void init_gl( int argc, char * argv[] );
+
+
 #endif

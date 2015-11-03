@@ -2,17 +2,17 @@
 
 # c compiler
 CC 	  = gcc
-CC_FLAGS  = -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
+CC_FLAGS  = -std=c99 -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
 CC_INC    = -I.
 CC_DEFS   = 
 CC_LIBS   = -lgomp -lpthread -lm
 
 # c++ compiler
 CXX	  = g++
-CXX_FLAGS = -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
+CXX_FLAGS = -Wall -Wundef -m64 -march=native -fPIC
 CXX_INC   = -I.
 CXX_DEFS  = 
-CXX_LIBS  = -lgomp -lpthread -lm
+CXX_LIBS  = -lm -lGL -L/usr/X11R6/lib -lGLU -lglut -lXi -lXmu
 
 # linker
 LD        = g++
@@ -20,18 +20,25 @@ LD_FLAGS  =
 
 #------------------------------------------------------------------------------
 
-SRC       = main.cpp
-PROG      = libmolecdyn.so
+OBJS      = libmolecdyn.o gl_molecdyn.o 
+LIB       = ../lib/libmolecdyn.so
 
-all: $(PROG)
+all: $(LIB)
 
 
 
-$(PROG): $(SRC)
+$(LIB): $(OBJS)
+	$(LD) --shared -o $@  $(OBJS) $(LD_FLAGS) $(CXX_LIBS) $(CC_LIBS)
+# 	shell export LD_LIBRARY_PATH ... - another option to do that
 
-	$(CXX) -c $(SRC) $(CXX_FLAGS) $(CXX_INC) $(CXX_LIBS) $(CXX_DEFS)
-	$(CXX) -
+.SUFFIXES:
+
+%.o:	%.c
+	$(CC) -o $@ -c $< $(CC_FLAGS) $(CC_INC) $(CC_DEFS)
+
+%.o:	%.cpp
+	$(CXX) -o $@ -c $< $(CXX_FLAGS) $(CXX_INC) $(CXX_DEFS)
 
 clean:
 
-	rm -f $(PROG)
+	rm -f $(LIB) *.o
