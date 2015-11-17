@@ -2,14 +2,14 @@
 
 # c compiler
 CC 	  = gcc
-CC_FLAGS  = -std=c99 -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -fopenmp -fPIC
+CC_FLAGS  = -std=c99 -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -ffast-math -fopenmp -fPIC
 CC_INC    = -I.
 CC_DEFS   = 
 CC_LIBS   = -lgomp -lpthread -lm
 
 # c++ compiler
 CXX	  = g++
-CXX_FLAGS = -Wall -Wundef -m64 -march=native -fPIC
+CXX_FLAGS = -Wall -Wall -Wundef -m64 -march=native -O3 -msse4 -ftree-vectorizer-verbose=1 -ffast-math -fopenmp -fPIC
 CXX_INC   = -I.
 CXX_DEFS  = 
 CXX_LIBS  = -lm -lGL -L/usr/X11R6/lib -lGLU -lglut -lXi -lXmu

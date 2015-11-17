@@ -26,6 +26,7 @@ md.init_simulation(nx=5,
                    ny=5,
                    nz=5,
                    a=0.38,
+                   R=0.38,
                    T0=100.,
                    m=39.948,
                    f=10000.0,
@@ -45,9 +46,13 @@ plt.title("velocity histogram")
 plt.xlabel("velocity")
 plt.ylabel("frequency")
 
-plt.show()
+#plt.show()
 plt.savefig('velocity_histogram.pdf')
+plt.clf()
 
+
+print()
+print('# SYSTEM STATISTICS')
 print('mean momentum via Python: ({},{},{})'.format(np.mean(px),np.mean(py),np.mean(pz)))
 
 sprinigness_pot_buff = L-np.sqrt(x**2+y**2+z**2);
@@ -58,15 +63,38 @@ print('LJ potential     :\t',stats[1],'\t LJ pot. energy via Python')
 print('spring. potential:\t',stats[2],'\t                via Python', 0.5*f*np.sum((sprinigness_pot_buff[np.where(sprinigness_pot_buff >= 0.)])**2))
 print('pressure         :\t',stats[4],'\t                via Python')
 
-# show in mayavi
-#mlab.points3d(x, y, z)
-#mlab.show()
-#mlab.savefig('mayavi_positions.pdf')
+# ###################################################################################### #
+#                                                                                        #
+#                              TESTING RESET LATTICE METHOD                              #
+#                                                                                        #
+# ###################################################################################### #
+
+print()
+md.reset_lattice()
+stats_reset = md.system_stats()
+print('# TESTING RESET LATTICE')
+print('differences')
+print('Kinetic energy   :\t',stats[0]-stats_reset[0])
+print('LJ potential     :\t',stats[1]-stats_reset[1])
+print('spring. potential:\t',stats[2]-stats_reset[2])
+print('pressure         :\t',stats[4]-stats_reset[4])
+
+
 
 data = np.loadtxt('coordinates.txt',skiprows=1)
 x_to_compare=data[:,0]
 y_to_compare=data[:,1]
 z_to_compare=data[:,2]
+
+
+print()
+print('# TEST POSITIONS')
+print('comparision x: ',np.max(np.abs(x - x_to_compare)))
+print('comparision y: ',np.max(np.abs(y - y_to_compare)))
+print('comparision z: ',np.max(np.abs(z - z_to_compare)))
+print()
+print()
+
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
@@ -87,15 +115,6 @@ plt.savefig('initial_positions.pdf')
 
 
 
-print('comparision x')
-print(np.max(np.abs(x - x_to_compare)))
-print()
-print('comparision y')
-print(np.max(np.abs(y - y_to_compare)))
-print()
-print('comparision z')
-print(np.max(np.abs(z - z_to_compare)))
-print()
 
 print()
 print('testing get positions')
@@ -109,16 +128,16 @@ print()
 #fx,fy,fz = md.get_forces()
 #print(np.dstack([fx,fy,fz]))
 
-print('single step')
-md.evolve(1)
-x2,y2,z2 = md.get_positions()
-#print(np.dstack([x2,y2,z2]))
-print(np.sqrt(np.max(x2**2+y2**2+z2**2)))
+#print('single step')
+#md.evolve(1)
+#x2,y2,z2 = md.get_positions()
+##print(np.dstack([x2,y2,z2]))
+#print(np.sqrt(np.max(x2**2+y2**2+z2**2)))
 
-print('testing if evolution places')
-print('x max diff.:',np.max(np.abs(x - x2)))
-print('y max diff.:',np.max(np.abs(y - y2)))
-print('z max diff.:',np.max(np.abs(z - z2)))
+#print('testing if evolution places')
+#print('x max diff.:',np.max(np.abs(x - x2)))
+#print('y max diff.:',np.max(np.abs(y - y2)))
+#print('z max diff.:',np.max(np.abs(z - z2)))
 
 
 
@@ -132,10 +151,9 @@ ax.set_xlim([-2.,2])
 ax.set_ylim([-2.,2])
 ax.set_zlim([-2.,2])
 
-#ax.scatter(x, y, z, c='grey', marker='o')
-#ax.scatter(x2, y2, z2, c='red', marker='o')
 
-#plt.show()
-#plt.savefig('evolution_step.pdf')
+
+
+
 
 md.end()

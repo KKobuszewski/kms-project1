@@ -9,7 +9,7 @@ nx= 5
 ny= 5
 nz= 5
 R= 0.38
-T0= 1e02
+T0= 0.0
 m= 39.948
 epsilon=1.0
 f= 10000.0
@@ -18,8 +18,8 @@ dt= 1e-03
 
 
 # GIVE TIME OF EVOLUTION IN PS AND NUMBER OF POINTS
-time=10
-snapshots = int(round(time/(100*dt)))
+time=1
+snapshots = int(round(1./dt))
 
 steps_to_be_done = int(round(time/dt))
 steps_per_snapshot = steps_to_be_done/snapshots
@@ -50,7 +50,9 @@ t = np.arange(float(snapshots+1))
 t *= dt*steps_per_snapshot
 t_max = np.max(t)
 
-# Oth step
+md.termalize()
+
+# 1st step after termalization
 stats = md.system_stats()
 Ek[0] = stats[0]
 V[0] = stats[1]
@@ -74,7 +76,7 @@ for s in xrange(snapshots):
 
 # PLOTING STATS
 
-np.savetxt('stats.txt',np.array([t,Ek,V,Vs,P,T]).T)
+np.savetxt('termalization_done_stats.txt',np.array([t,Ek,V,Vs,P,T]).T)
 
 #px,py,pz = md.get_momenta()
 
@@ -112,7 +114,7 @@ ax3.plot(t,P)
 ax3.set_xlim(0, t_max)
 #ax3.set_ylim(0, 800)
 
-plt.savefig('stats_test.pdf')
+plt.savefig('termalization_done_stats.pdf')
 plt.show()
 
 
