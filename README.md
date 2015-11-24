@@ -19,7 +19,7 @@ Directories` contents description:
 
 Source code was tested with gcc 4.9.2 and Python 2.7.9 on Ubuntu 15.04.
 
-# Dependencies
+### Dependencies
 To run all given examples there are following Python modules required:
 - `numpy` 1.7 or newer
 - `matplotlib` 1.4.3 or newer
@@ -28,7 +28,7 @@ To run all given examples there are following Python modules required:
 Requred C++ libraries:
 - OpenGL and GLUT
 
-# Building with python extension
+### Building with python extension
 
 Change path in file `install_extension.sh` lines 3 and 10 for your Python modules dist packages folder.
 Change path in file `setupy.py` in line 25 for your <path-to-repository>/lib.
@@ -36,7 +36,7 @@ Change path in file `setupy.py` in line 25 for your <path-to-repository>/lib.
 run `./install_extension.sh` script
 
 
-# Building C library only
+### Building C library only
 
 run `make` in repository folder.
 
