@@ -2,6 +2,8 @@
 This simple molecular dynamics library with Python bindings was written for the prupose of students' laboratory project in Computer Simulation Methods course taught during the autumn semester of Academic Year 2015/2016 on Faculty of Physics Warsaw University of Technology.
 Simulation enables investigation of molecular dynamics in set of particles interacting with Lennard-Jones potential. Particles are placed in spherical volume and the interaction with medium outside bondouaries is given by $ \boldsymbol{F}^S_i = f \left( L - \boldsymbol{r}_i \right) \frac{\boldsymbol{r}_i}{\vert \boldsymbol{r}_i \vert} $.
 
+![Molecular Dynamics in Mayavi](https://github.com/KKobuszewski/kms-project1/molecdyn_screenshot.pdf)
+
 ## Repository structure
 Directories` contents description:
 - Directory `build` is used for files created by python's setuptools.distutils when building Python wrapper.
