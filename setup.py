@@ -17,15 +17,16 @@ for key, value in cfg_vars.items():
 
 # Define compilation command
 module = Extension('MolecDyn',
-                    sources = ['python_interface.c','libmolecdyn.c','gl_molecdyn.cpp'],
+                    sources = ['pyext/python_interface.c'],#,'libmolecdyn.c','gl_molecdyn.cpp'],
                     include_dirs=np_misc_utils.get_numpy_include_dirs(),
                     define_macros=[('NPY_NO_DEPRECATED_API','NPY_1_7_API_VERSION')],#,('VERBOSE','')],
                     undef_macros=[],
-                    library_dirs=['../lib','/usr/X11R6/lib'],
+                    library_dirs=['./lib','/usr/X11R6/lib'],
                     runtime_library_dirs=['/home/konrad/CProjects/kms-project1/lib','/usr/X11R6/lib'],
                     libraries=['m','gomp', 'GL', 'GLU','glut','Xi','Xmu','molecdyn'])
 """extra_link_args=['-framework', 'OpenGL'],"""
 module.extra_compile_args.extend(['--std=c99','-fopenmp'])
+module.include_dirs.extend(['./src','./include'])
 # ======================================================================================================
 
 

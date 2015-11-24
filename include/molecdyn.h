@@ -2,6 +2,10 @@
 #ifndef __MOLEC_DYN_H__
 #define __MOLEC_DYN_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct Global_t
 {
     /* Constants */
@@ -66,6 +70,7 @@ void set_dt(const double dt);
 
 void termalize_system();
 void evolve_system(uint32_t steps);
+void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_per_positions);
 
 double** return_positions();
 double** return_momenta();
@@ -79,9 +84,7 @@ void free_mem();
 
 // ============ OpenGL wrapper =======================================
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 void init_gl( int argc, char * argv[] );
 
 #ifdef __cplusplus

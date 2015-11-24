@@ -37,6 +37,8 @@ static PyObject* py_change_R(PyObject* self, PyObject *args);
 static PyObject* py_change_a(PyObject* self, PyObject *args);
 static PyObject* py_change_T(PyObject* self, PyObject *args);
 
+static PyObject* simulate(PyObject* self, PyObject *args);
+
 
 /*
  * KWARGS Functions

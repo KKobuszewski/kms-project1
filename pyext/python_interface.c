@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <math.h>
 #include <Python.h>
 #include <numpy/arrayobject.h>
@@ -27,6 +29,7 @@ static PyMethodDef module_methods[] = {
     {"system_stats"     , (PyCFunction) stats            , METH_NOARGS               , "doc: statistics of system in current time"},
     {"termalize"        , (PyCFunction) py_termalize     , METH_NOARGS               , "doc: performs algorithm to termalize system"},
     {"evolve"           , (PyCFunction) evolve           , METH_VARARGS|METH_KEYWORDS, "doc: evolves system t with timestep dt"},
+    {"simulate"         , (PyCFunction) simulate         , METH_VARARGS              , "doc: evolves system for time t and saves data with given frequency"},
     {"change_a"         , (PyCFunction) py_change_a      , METH_VARARGS              , "doc: changes constant a and resets system to initial conditions"},
     {"change_R"         , (PyCFunction) py_change_R      , METH_VARARGS              , "doc: changes constant R and resets system to initial conditions"},
     {"change_T"         , (PyCFunction) py_change_T      , METH_VARARGS              , "doc: changes temperature and draws new momenta"},
@@ -261,6 +264,9 @@ static PyObject* set_particles(PyObject* self)
     argv [0]=strdup ("test.py");
     printf("simulation? %s\n",animation_str);
     if (strcmp(animation_str, "yes") == 0) init_gl(1,argv); // here run pthread
+    if (strcmp(vel_distrib_str, "yes") == 0) srand(time(NULL)); // here run pthread
+    
+    
     
     // clear memory
     // NOTE: Memory for PyArrayObjects and their data will be freed by Python
@@ -322,7 +328,7 @@ static PyObject* py_change_T(PyObject* self, PyObject *args)
     if ( !PyArg_ParseTuple(args, "d", &T0) )
         return NULL;
     
-    printf("# CHANGING R CONSTANT\t\t\tR=%lf\n",R);
+    printf("\n# CHANGING TEMPERATURE");
     change_T(T0);
     
     Py_RETURN_NONE;
@@ -497,6 +503,18 @@ static PyObject* evolve(PyObject* self, PyObject *args, PyObject *kwargs)
     
     printf("# Making %d steps with dt %lf\n",steps,dt);
     evolve_system(steps);
+    
+    Py_RETURN_NONE;
+}
+
+static PyObject* simulate(PyObject* self, PyObject *args)
+{
+    double time;
+    int steps_per_stats = 100, steps_per_positions = 100;
+    if ( !PyArg_ParseTuple(args, "d|ii", &time,&steps_per_stats,&steps_per_positions) )
+        return NULL; // exit error
+    
+    perform_experiment(time,steps_per_stats,steps_per_positions);
     
     Py_RETURN_NONE;
 }

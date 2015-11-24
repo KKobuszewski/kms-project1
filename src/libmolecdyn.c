@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <stdint.h>
 
 #include <math.h>
 #include <omp.h>
@@ -662,6 +668,8 @@ void change_R(const double R)
 void change_T(const double T0)
 {
     global.T0 = T0;
+    
+    printf("\t\t\tT0=%lf\n",global.T0);
     set_momenta();
 }
 
@@ -787,7 +795,7 @@ void evolve_system(uint32_t timesteps)
  */
 void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_per_positions)
 {
-    uint16_t timesteps = time*( (uint16_t) round(1./global.dt) );
+    uint16_t timesteps = ( (uint16_t) round(time/global.dt) );
     
 //     double*     pressure_arr = malloc( timesteps * sizeof(double) );
 //     double* sig_pressure_arr = malloc( timesteps * sizeof(double) );
@@ -809,9 +817,9 @@ void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_pe
     struct stat st = {0};
     if (stat(dirname, &st) == -1) { mkdir(dirname, 0777); }
     
-    char filename_stats[256];
-    sprintf( filename_pT,"pT_stats_T0=%.1lf.txt",global.T0);
-    FILE* file_pT = fopen(filename_stats,"w");
+    char filename_pT[256];
+    sprintf( filename_pT,"pT_stats.txt");
+    FILE* file_pT = fopen(filename_pT,"a");
     
     char filename_stats[256];
     sprintf( filename_stats,"%s/stats_T0=%.1lf.txt",dirname,global.T0);
@@ -819,11 +827,11 @@ void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_pe
     
     char filename_positions[256];
     sprintf( filename_positions,"%s/positions_T0=%.1lf.bin",dirname,global.T0);
-    FILE* file_pos = fopen(filename_stats,"wb");
+    FILE* file_pos = fopen(filename_positions,"wb");
     
     char filename_momenta[256];
     sprintf( filename_momenta,"%s/momenta_T0=%.1lf.bin",dirname,global.T0);
-    FILE* file_mom = fopen(filename_stats,"wb");
+    FILE* file_mom = fopen(filename_momenta,"wb");
     
     
     // ============================= MAIN LOOP =========================================
@@ -832,6 +840,8 @@ void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_pe
     double u_pressure = 0.;
     double av_temp = 0.;
     double u_temp = 0.;
+    
+    printf("# Making simulation for %.1lf ps   [%d timesteps]\n",time,timesteps);
     
     count_forces(); // function leap_frog() requries
     
@@ -842,27 +852,33 @@ void perform_experiment(double time, uint16_t steps_per_stats, uint16_t steps_pe
         
         const double p = pressure();
         const double T = temperature();
-        av_pressure += p;
-        u_pressure += p*p;
-        av_temp += T;
-        u_temp += T*T;
+        av_pressure += p/timesteps;
+        u_pressure += p*p/timesteps;
+        av_temp += T/timesteps;
+        u_temp += T*T/timesteps;
         
         if (!(ii%steps_per_stats))
         {
-            
+            fprintf(file_stats,"%e\t%e\t%e\t%e\n",av_temp,u_temp,av_pressure,u_pressure);
         }
         else if (!(ii%steps_per_positions))
         {
-            fwrite(global.x_arr,sizeof(double) * global.N, file_pos);
-            fwrite(global.y_arr,sizeof(double) * global.N, file_pos);
-            fwrite(global.z_arr,sizeof(double) * global.N, file_pos);
+            fwrite(global.x_arr,sizeof(double), global.N, file_pos);
+            fwrite(global.y_arr,sizeof(double), global.N, file_pos);
+            fwrite(global.z_arr,sizeof(double), global.N, file_pos);
             
-            fwrite(global.px_arr,sizeof(double) * global.N, file_mom);
-            fwrite(global.py_arr,sizeof(double) * global.N, file_mom);
-            fwrite(global.pz_arr,sizeof(double) * global.N, file_mom);
+            fwrite(global.px_arr,sizeof(double), global.N, file_mom);
+            fwrite(global.py_arr,sizeof(double), global.N, file_mom);
+            fwrite(global.pz_arr,sizeof(double), global.N, file_mom);
         }
     }
     
+    // ========================= MEANS ========================================
+    
+    //av_temp /= timesteps;
+    u_temp = sqrt( u_temp - av_temp*av_temp );
+    //av_pressure /= timesteps;
+    u_pressure = sqrt( u_pressure - av_pressure*av_pressure );
     
     //fprintf(file_pT,"\n","T","u(T)","p","u(p)");
     fprintf(file_pT,"%e\t%e\t%e\t%e\n",av_temp,u_temp,av_pressure,u_pressure);

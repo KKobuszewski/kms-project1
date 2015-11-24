@@ -101,7 +101,7 @@ void Display()
         glTranslatef(-1.,- 1., -1.);
         glColor3f(0.0f, 0.0f, 1.0f);
         glutSolidSphere(0.07f,20,20);
-        //glCallList(PARTICLES);
+        glCallList(PARTICLES);
         glPopMatrix();
         
 //     for (uint32_t ii = 0; ii < global.N; ii++)

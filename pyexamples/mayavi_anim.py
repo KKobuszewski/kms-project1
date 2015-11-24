@@ -5,15 +5,20 @@ from mayavi import mlab
 
 import MolecDyn as md # home-made module for molecular dynamics
 
-md.init_simulation(nx=5,
-                   ny=5,
-                   nz=5,
+nx=8
+ny=8
+nz=8
+a=0.38
+
+md.init_simulation(nx=nx,
+                   ny=ny,
+                   nz=nz,
                    a=0.38,
                    R=0.38,
-                   T0=250,
+                   T0=110,
                    m=39.948,
                    f=10000.0,
-                   L=2.3,
+                   L=1.23*(nx-1)*a,
                    epsilon=1.,
                    dt=1e-03)
 
@@ -34,7 +39,7 @@ x,y,z,px,py,pz = md.set_particles()
 #y = r * sin(phi) * sin(theta)
 #z = r * cos(phi)
 
-md.evolve(10000)
+#md.evolve(10000)
 
 
 
